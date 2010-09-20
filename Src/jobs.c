@@ -888,8 +888,9 @@ printjob(Job jn, int lng, int synch)
     if (jn->stat & STAT_NOPRINT) {
 	skip_print = 1;
     }
-    if (isset(LMLONE)){
+    if (isset(LMLONE) && synch == 0){
         skip_print=1;
+        //doneprint=1;
     }
 
     if (lng < 0) {
@@ -1467,7 +1468,8 @@ spawnjob(void)
 	    prevjob = thisjob;
 	if (jobbing && jobtab[thisjob].procs) {
 	    FILE *fout = shout ? shout : stdout;
-	    fprintf(fout, "[%d]", thisjob);
+        if(!isset(LMLONE))
+	        fprintf(fout, "[%d]", thisjob);
 	    for (pn = jobtab[thisjob].procs; pn; pn = pn->next)
 		fprintf(fout, " %ld", (long) pn->pid);
 	    fprintf(fout, "\n");
