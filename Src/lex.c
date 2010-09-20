@@ -151,6 +151,7 @@ mod_export char *tokstrings[WHILE + 1] = {
     "&&",	/* DAMPER	     */
     ">",	/* OUTANG	  10 */
     ">|",	/* OUTANGBANG	     */
+ //   ">@",	/* DIRBANG	     */
     ">>",	/* DOUTANG	     */
     ">>|",	/* DOUTANGBANG	     */
     "<",	/* INANG	     */
@@ -921,6 +922,8 @@ gettok(void)
 		}
 	    } else if (d == '!' || d == '|')
 		peek = DOUTANGBANG;
+	    //else if (d == '@')
+		//peek = DIRBANG;
 	    else if (d == '(') {
 		hungetc(d);
 		hungetc('>');

@@ -29,6 +29,8 @@
 
 #include "zsh.mdh"
 #include "exec.pro"
+#include <sys/types.h>
+#include <dirent.h>
 
 /* Flags for last argument of addvars */
 
@@ -1855,6 +1857,31 @@ clobber_open(struct redir *f)
 {
     struct stat buf;
     int fd, oerrno;
+    if(isset(CCREATE)){
+        char *dirname=strdup(unmeta(f->name))
+        char *tmp=dirname;
+        int counter=0;
+        while(*tmp)
+        {
+            if(*tmp=='/')
+            {
+                dirname[counter+1]='\0';    
+            }
+            tmp++;
+            counter++;
+        }
+        if (opendir(dirname)==NULL)
+        {
+            char cmd[40];
+            sprintf(cmd,"mkdir -p %s",dirname);
+            if(system(cmd)==-1){
+                return -1;
+            }
+        } 
+        free(dirname);
+        free(tmp);
+    }
+
 
     /* If clobbering, just open. */
     if (isset(CLOBBER) || IS_CLOBBER_REDIR(f->type))
