@@ -888,6 +888,9 @@ printjob(Job jn, int lng, int synch)
     if (jn->stat & STAT_NOPRINT) {
 	skip_print = 1;
     }
+    if (isset(LMLONE)){
+        skip_print=1;
+    }
 
     if (lng < 0) {
 	conted = 1;
