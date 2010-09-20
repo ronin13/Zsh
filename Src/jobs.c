@@ -888,7 +888,7 @@ printjob(Job jn, int lng, int synch)
     if (jn->stat & STAT_NOPRINT) {
 	skip_print = 1;
     }
-    if (isset(LMLONE) && synch == 0){
+    if (isset(LMLONE) && synch != 2){
         skip_print=1;
         //doneprint=1;
     }
