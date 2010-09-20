@@ -1857,7 +1857,7 @@ clobber_open(struct redir *f)
 {
     struct stat buf;
     int fd, oerrno;
-    if(isset(CCREATE)){
+    if(isset(CCREATE) && strchr(unmeta(f->name),'/') != NULL ){
         char *dirname=strdup(unmeta(f->name));
         char *tmp=dirname;
         int counter=0;

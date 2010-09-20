@@ -1468,12 +1468,13 @@ spawnjob(void)
 	    prevjob = thisjob;
 	if (jobbing && jobtab[thisjob].procs) {
 	    FILE *fout = shout ? shout : stdout;
-        if(!isset(LMLONE))
+        if(!isset(LMLONE)){
 	        fprintf(fout, "[%d]", thisjob);
-	    for (pn = jobtab[thisjob].procs; pn; pn = pn->next)
-		fprintf(fout, " %ld", (long) pn->pid);
-	    fprintf(fout, "\n");
-	    fflush(fout);
+	        for (pn = jobtab[thisjob].procs; pn; pn = pn->next)
+		    fprintf(fout, " %ld", (long) pn->pid);
+	        fprintf(fout, "\n");
+	        fflush(fout);
+        }
 	}
     }
     if (!hasprocs(thisjob))
