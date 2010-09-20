@@ -177,6 +177,7 @@ static struct optname optns[] = {
 {{NULL, "localtraps",	      OPT_EMULATE|OPT_KSH},	 LOCALTRAPS},
 {{NULL, "login",	      OPT_SPECIAL},		 LOGINSHELL},
 {{NULL, "longlistjobs",	      0},			 LONGLISTJOBS},
+{{NULL, "lmlone",	      0},			 LMLONE},
 {{NULL, "magicequalsubst",    OPT_EMULATE},		 MAGICEQUALSUBST},
 {{NULL, "mailwarning",	      0},			 MAILWARNING},
 {{NULL, "markdirs",	      0},			 MARKDIRS},
