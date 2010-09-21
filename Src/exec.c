@@ -1860,16 +1860,18 @@ clobber_open(struct redir *f)
     if(isset(CCREATE) && strchr(unmeta(f->name),'/') != NULL ){
         char *dirname=strdup(unmeta(f->name));
         char *tmp=dirname;
+        int lastpoint=0;
         int counter=0;
         while(*tmp)
         {
             if(*tmp=='/')
             {
-                dirname[counter+1]='\0';    
+                lastpoint=counter;
             }
             tmp++;
             counter++;
         }
+        dirname[lastpoint+1]='\0';    
         if (opendir(dirname)==NULL)
         {
             char cmd[40];
