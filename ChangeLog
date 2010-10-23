@@ -1,3 +1,116 @@
+2010-10-22  Peter Stephenson  <pws@csr.com>
+
+	* 28360: Src/subst.c, Test/E01options.ztst: NO_UNSET option
+	should test parameters with following operators, too.
+
+	* not quite posted: Completion/Unix/Command/_screen: better to
+	allow sessions to be completed after -S.
+
+2010-10-21  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* Silas Silva (with minor improvement): users/15464:
+	Completion/Unix/Command/_man: support for -M argument.
+
+2010-10-18  Peter Stephenson  <pws@csr.com>
+
+	* Jérôme Pouiller: 28351: Functions/Misc/run-help-openssl,
+	Functions/Misc/run-help-sudo: new help functions.
+
+2010-10-17  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* Mikael: 28356: Src/Zle/zle_refresh.c: don't increment old
+	display line past NULL.
+
+	* c.f. 28353: Doc/Zsh/metafaq.yo: removing remaining reference
+	to sunsite in FTP sites.
+
+2010-10-15  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* 28345: Doc/Zsh/expn.yo, Functions/Chpwd/cdr, Src/builtin.c,
+	Src/utils.c: make new ${(D)} flag return the contracted file as
+	a fully usable command line argument.
+
+2010-10-12  Barton E. Schaefer  <schaefer@zsh.org>
+
+	* unposted (users/15440): Doc/Zsh/expn.yo: fix cross-references
+	among parameter expansion rules.
+
+2010-10-12  Peter Stephenson  <pws@csr.com>
+
+	* Mikael: 28343: Completion/Unix/Command/_setfacl: didn't
+	complete file argument in all cases.
+
+2010-10-10  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* 28340: Src/params.c: assignment with negative index didn't
+	work with multibyte characters.
+
+	* 28339: Src/hist.c: NO_HIST_LEX_WORDS didn't handle
+	backslash-newline line continuation properly, either.
+
+	* 28332: Src/hist.c: HIST_LEX_WORDS didn't handle
+	backslash-newline line continuation properly.  Come to think of
+	it, neither does the alternative.
+
+2010-10-10  Phil Pennock  <pdpennock@users.sourceforge.net>
+
+	* 28338: Src/cond.c, C02cond.ztst: keep =~ from inverting sense
+	of subsequent tests (after &&/||).
+
+2010-10-08  Peter Stephenson  <pws@csr.com>
+
+	* Ben: 28330: Completion/X/Command/_acroread: add
+	completion for -openInNewInstance.
+
+	* Ben: 28329: Completion/X/Command/_acroread: version 9 is
+	similar to 7 and 8.
+
+2010-10-07  Peter Stephenson  <pws@csr.com>
+
+	* 28327: Src/hist.c: Fix bufferwords() splitting when RC_QUOTES
+	is turned on.
+
+2010-10-06  Peter Stephenson  <pws@csr.com>
+
+	* 28326: Src/hist.c, Test/D04parameter.ztst: Problems with
+	HIST_LEX_WORDS: memory allocation was screwed if we skipped
+	"words" from the lexer; use local heap to avoid silly amounts of
+	memory; fallback to non-lex on failure rather than just fixing
+	up at the end; workaround oddity with splitting with RC_QUOTES.
+
+	* 28319: Src/hist.c, Test/D04parameter.ztst: ${(z)...}
+	splitting oddities and some tests for consistency.
+
+	* 28285: Doc/Zsh/zle.yo, Src/Zle/zle_hist.c: add
+	zle-isearch-update and zle-isearch-exit hooks.
+
+2010-10-02  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* unposted: NEWS: note HIST_LEX_WORDS option.
+
+	* 28310 with 28308 (Bart): Doc/Zsh/options.yo, Src/hist.c,
+	Src/options.c, Src/zsh.h: HIST_LEX_WORDS option and check
+	for full history file read.
+
+	* 28309: Src/subst.c: infinite loop when padding with extra wide
+	characters.
+
+	* Mikael: 28301: Doc/Zsh/compsys.yo: restore missing line.
+
+2010-10-01  Oliver Kiddle  <opk@zsh.org>
+
+	* 28307: Completion/Zsh/Command/_zstyle: support new styles
+	especially vcs_info ones and allow quoted contexts again
+
+2010-09-25  Peter Stephenson  <p.w.stephenson@ntlworld.com>
+
+	* 28295 plus tweak for failure case: Src/hist.c: use lexer to
+	split words from history file.
+
+2010-09-23  Peter Stephenson  <pws@csr.com>
+
+	* unposted: Doc/Zsh/manual.yo: update address of HTML manual.
+
 2010-09-20  Peter Stephenson  <pws@csr.com>
 
 	* 28282: Src/Zle/zle_keymap.c, Src/Zle/zle_main.c,
@@ -13668,5 +13781,5 @@
 
 *****************************************************
 * This is used by the shell to define $ZSH_PATCHLEVEL
-* $Revision: 1.5085 $
+* $Revision: 1.5113 $
 *****************************************************

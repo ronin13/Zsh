@@ -2228,10 +2228,10 @@ readhistfile(char *fn, int err, int readflags)
     Histent he;
     time_t stim, ftim, tim = time(NULL);
     off_t fpos;
-    short *wordlist;
+    short *words;
     struct stat sb;
-    int nwordpos, nwordlist, bufsiz;
-    int searching, newflags, l, ret;
+    int nwordpos, nwords, bufsiz;
+    int searching, newflags, l, ret, uselex;
 
     if (!fn && !(fn = getsparam("HISTFILE")))
 	return;
@@ -2251,11 +2251,12 @@ readhistfile(char *fn, int err, int readflags)
 	}
     }
     if ((in = fopen(unmeta(fn), "r"))) {
-	nwordlist = 64;
-	wordlist = (short *)zalloc(nwordlist*sizeof(short));
+	nwords = 64;
+	words = (short *)zalloc(nwords*sizeof(short));
 	bufsiz = 1024;
 	buf = zalloc(bufsiz);
 
+	pushheap();
 	if (readflags & HFILE_FAST && lasthist.text) {
 	    if (lasthist.fpos < lasthist.fsiz) {
 		fseek(in, lasthist.fpos, 0);
@@ -2334,29 +2335,110 @@ readhistfile(char *fn, int err, int readflags)
 	    else
 		he->ftim = ftim;
 
-	    /* Divide up the words.  We don't know how it lexes,
-	       so just look for white-space.
-	       */
+	    /*
+	     * Divide up the words.
+	     */
 	    nwordpos = 0;
 	    start = pt;
-	    do {
-		while (inblank(*pt))
-		    pt++;
-		if (*pt) {
-		    if (nwordpos >= nwordlist)
-			wordlist = (short *) realloc(wordlist,
-					(nwordlist += 64)*sizeof(short));
-		    wordlist[nwordpos++] = pt - start;
-		    while (*pt && !inblank(*pt))
-			pt++;
-		    wordlist[nwordpos++] = pt - start;
+	    uselex = isset(HISTLEXWORDS) && !(readflags & HFILE_FAST);
+	    if (uselex) {
+		/*
+		 * Attempt to do this using the lexer.
+		 */
+		LinkList wordlist = bufferwords(NULL, pt, NULL);
+		LinkNode wordnode;
+		int nwords_max;
+		nwords_max = 2 * countlinknodes(wordlist);
+		if (nwords_max > nwords) {
+		    nwords = nwords_max;
+		    words = (short *)realloc(words, nwords*sizeof(short));
 		}
-	    } while (*pt);
+		for (wordnode = firstnode(wordlist);
+		     wordnode;
+		     incnode(wordnode)) {
+		    char *word = getdata(wordnode);
+
+		    for (;;) {
+			/*
+			 * Not really an oddity: "\\\n" is
+			 * removed from input as if whitespace.
+			 */
+			if (inblank(*pt))
+			    pt++;
+			else if (pt[0] == '\\' && pt[1] == '\n')
+			    pt += 2;
+			else
+			    break;
+		    }
+		    if (!strpfx(word, pt)) {
+			int bad = 0;
+			/*
+			 * Oddity 1: newlines turn into semicolons.
+			 */
+			if (!strcmp(word, ";"))
+			    continue;
+			while (*pt) {
+			    if (!*word) {
+				bad = 1;
+				break;
+			    }
+			    /*
+			     * Oddity 2: !'s turn into |'s.
+			     */
+			    if (*pt == *word ||
+				(*pt == '!' && *word == '|')) {
+				pt++;
+				word++;
+			    } else {
+				bad = 1;
+				break;
+			    }
+			}
+			if (bad) {
+#ifdef DEBUG
+			    dputs(ERRMSG("bad wordsplit reading history: "
+					 "%s\nat: %s\nword: %s"),
+				  start, pt, word);
+#endif
+			    pt = start;
+			    nwordpos = 0;
+			    uselex = 0;
+			    break;
+			}
+		    }
+		    words[nwordpos++] = pt - start;
+		    pt += strlen(word);
+		    words[nwordpos++] = pt - start;
+		}
+		freeheap();
+	    }
+	    if (!uselex) {
+		do {
+		    for (;;) {
+			if (inblank(*pt))
+			    pt++;
+			else if (pt[0] == '\\' && pt[1] == '\n')
+			    pt += 2;
+			else
+			    break;
+		    }
+		    if (*pt) {
+			if (nwordpos >= nwords)
+			    words = (short *)
+				realloc(words, (nwords += 64)*sizeof(short));
+			words[nwordpos++] = pt - start;
+			while (*pt && !inblank(*pt))
+			    pt++;
+			words[nwordpos++] = pt - start;
+		    }
+		} while (*pt);
+
+	    }
 
 	    he->nwords = nwordpos/2;
 	    if (he->nwords) {
 		he->words = (short *)zalloc(nwordpos*sizeof(short));
-		memcpy(he->words, wordlist, nwordpos*sizeof(short));
+		memcpy(he->words, words, nwordpos*sizeof(short));
 	    } else
 		he->words = (short *)NULL;
 	    addhistnode(histtab, he->node.nam, he);
@@ -2369,9 +2451,10 @@ readhistfile(char *fn, int err, int readflags)
 	    zsfree(lasthist.text);
 	    lasthist.text = ztrdup(start);
 	}
-	zfree(wordlist, nwordlist*sizeof(short));
+	zfree(words, nwords*sizeof(short));
 	zfree(buf, bufsiz);
 
+	popheap();
 	fclose(in);
     } else if (err)
 	zerr("can't read history file %s", fn);
@@ -2811,11 +2894,18 @@ bufferwords(LinkList list, char *buf, int *index)
     int num = 0, cur = -1, got = 0, ne = noerrs;
     int owb = wb, owe = we, oadx = addedx, ozp = zleparse, onc = nocomments;
     int ona = noaliases, ocs = zlemetacs, oll = zlemetall;
+    int forloop = 0, rcquotes = opts[RCQUOTES];
     char *p, *addedspaceptr;
 
     if (!list)
 	list = newlinklist();
 
+    /*
+     * With RC_QUOTES, 'foo '' bar' comes back as 'foo ' bar'.  That's
+     * not very useful.  As nothing in here requires the fully processed
+     * string expression, we just turn the option off for this function.
+     */
+    opts[RCQUOTES] = 0;
     zleparse = 1;
     addedx = 0;
     noerrs = 1;
@@ -2884,25 +2974,84 @@ bufferwords(LinkList list, char *buf, int *index)
 	ctxtlex();
 	if (tok == ENDINPUT || tok == LEXERR)
 	    break;
-	if (tokstr && *tokstr) {
-	    untokenize((p = dupstring(tokstr)));
-	    if (ingetptr() == addedspaceptr + 1) {
-		/*
-		 * Whoops, we've read past the space we added, probably
-		 * because we were expecting a terminator but when
-		 * it didn't turn up we shrugged our shoulders thinking
-		 * it might as well be a complete string anyway.
-		 * So remove the space.  C.f. below for the case
-		 * where the missing terminator caused a lex error.
-		 * We use the same paranoid test.
-		 */
-		int plen = strlen(p);
-		if (plen && p[plen-1] == ' ' &&
-		    (plen == 1 || p[plen-2] != Meta))
-		    p[plen-1] = '\0';
+	if (tok == FOR) {
+	    /*
+	     * The way for (( expr1 ; expr2; expr3 )) is parsed is:
+	     * - a FOR tok
+	     * - a DINPAR with no tokstr
+	     * - two DINPARS with tokstr's expr1, expr2.
+	     * - a DOUTPAR with tokstr expr3.
+	     *
+	     * We'll decrement the variable forloop as we verify
+	     * the various stages.
+	     *
+	     * Don't ask me, ma'am, I'm just the programmer.
+	     */
+	    forloop = 5;
+	} else {
+	    switch (forloop) {
+	    case 1:
+		if (tok != DOUTPAR)
+		    forloop = 0;
+		break;
+
+	    case 2:
+	    case 3:
+	    case 4:
+		if (tok != DINPAR)
+		    forloop = 0;
+		break;
+
+	    default:
+		/* nothing to do */
+		break;
 	    }
-	    addlinknode(list, p);
-	    num++;
+	}
+	if (tokstr) {
+	    switch (tok) {
+	    case ENVARRAY:
+		p = dyncat(tokstr, "=(");
+		break;
+
+	    case DINPAR:
+		if (forloop) {
+		    /* See above. */
+		    p = dyncat(tokstr, ";");
+		} else {
+		    /*
+		     * Mathematical expressions analysed as a single
+		     * word.  That's correct because it behaves like
+		     * double quotes.  Whitespace in the middle is
+		     * similarly retained, so just add the parentheses back.
+		     */
+		    p = tricat("((", tokstr, "))");
+		}
+		break;
+
+	    default:
+		p = dupstring(tokstr);
+		break;
+	    }
+	    if (*p) {
+		untokenize(p);
+		if (ingetptr() == addedspaceptr + 1) {
+		    /*
+		     * Whoops, we've read past the space we added, probably
+		     * because we were expecting a terminator but when
+		     * it didn't turn up we shrugged our shoulders thinking
+		     * it might as well be a complete string anyway.
+		     * So remove the space.  C.f. below for the case
+		     * where the missing terminator caused a lex error.
+		     * We use the same paranoid test.
+		     */
+		    int plen = strlen(p);
+		    if (plen && p[plen-1] == ' ' &&
+			(plen == 1 || p[plen-2] != Meta))
+			p[plen-1] = '\0';
+		}
+		addlinknode(list, p);
+		num++;
+	    }
 	} else if (buf) {
 	    if (IS_REDIROP(tok) && tokfd >= 0) {
 		char b[20];
@@ -2914,6 +3063,16 @@ bufferwords(LinkList list, char *buf, int *index)
 		addlinknode(list, dupstring(tokstrings[tok]));
 		num++;
 	    }
+	}
+	if (forloop) {
+	    if (forloop == 1) {
+		/*
+		 * Final "))" of for loop to match opening,
+		 * since we've just added the preceding element.
+ 		 */
+		addlinknode(list, dupstring("))"));
+	    }
+	    forloop--;
 	}
 	if (!got && !zleparse) {
 	    got = 1;
@@ -2949,6 +3108,7 @@ bufferwords(LinkList list, char *buf, int *index)
     wb = owb;
     we = owe;
     addedx = oadx;
+    opts[RCQUOTES] = rcquotes;
 
     if (index)
 	*index = cur;
